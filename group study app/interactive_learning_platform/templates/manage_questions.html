@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Questions{% endblock %}
+
+{% block content %}
+<div class="glass-panel" style="padding: 2rem; margin-top: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Questions for: {{ material.title }}</h2>
+        <a href="{{ url_for('group_view', group_id=material.group_id) }}" class="btn btn-outline">Back to Group</a>
+    </div>
+
+    <!-- Add Question Form -->
+    <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
+        <h3>Add New Question</h3>
+        <form action="{{ url_for('add_question', material_id=material.id) }}" method="POST">
+            <input type="text" name="text" placeholder="Question Text" required>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <input type="text" name="option_a" placeholder="Option A" required>
+                <input type="text" name="option_b" placeholder="Option B" required>
+                <input type="text" name="option_c" placeholder="Option C" required>
+                <input type="text" name="option_d" placeholder="Option D" required>
+            </div>
+
+            <label>Correct Answer:</label>
+            <select name="correct_option" required>
+                <option value="A">Option A</option>
+                <option value="B">Option B</option>
+                <option value="C">Option C</option>
+                <option value="D">Option D</option>
+            </select>
+
+            <button type="submit" class="btn">Add Question</button>
+        </form>
+    </div>
+
+    <!-- Existing Questions -->
+    <h3 style="margin-top: 2rem;">Existing Questions</h3>
+    {% for q in questions %}
+    <div class="glass-panel" style="padding: 1rem; margin-bottom: 1rem; background: rgba(255,255,255,0.02);">
+        <p><strong>Q: {{ q.text }}</strong></p>
+        <ul style="list-style: none; padding-left: 0; color: var(--text-muted);">
+            <li {% if q.correct_option=='A' %}style="color: #10b981; font-weight: bold;" {% endif %}>A) {{ q.option_a }}
+            </li>
+            <li {% if q.correct_option=='B' %}style="color: #10b981; font-weight: bold;" {% endif %}>B) {{ q.option_b }}
+            </li>
+            <li {% if q.correct_option=='C' %}style="color: #10b981; font-weight: bold;" {% endif %}>C) {{ q.option_c }}
+            </li>
+            <li {% if q.correct_option=='D' %}style="color: #10b981; font-weight: bold;" {% endif %}>D) {{ q.option_d }}
+            </li>
+        </ul>
+    </div>
+    {% else %}
+    <p>No questions added yet.</p>
+    {% endfor %}
+
+</div>
+{% endblock %}

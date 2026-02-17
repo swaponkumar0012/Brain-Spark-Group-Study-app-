@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Study: {{ material.title }}{% endblock %}
+
+{% block content %}
+<style>
+    .chat-container {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        width: 300px;
+        height: 400px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+    }
+
+    .chat-header {
+        padding: 10px 15px;
+        background: var(--primary);
+        color: white;
+        border-radius: 12px 12px 0 0;
+        font-weight: bold;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+
+    .chat-input-area {
+        padding: 10px;
+        border-top: 1px solid #ddd;
+        display: flex;
+        gap: 5px;
+    }
+
+    .msg {
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: #f1f3f5;
+    }
+
+    .msg.mine {
+        background: var(--bg-gradient-start);
+        color: white;
+        align-self: flex-end;
+        margin-left: 20%;
+    }
+
+    .msg-sender {
+        font-size: 0.75rem;
+        font-weight: bold;
+        margin-bottom: 2px;
+        color: #555;
+    }
+</style>
+
+<div style="display: flex; gap: 20px; max-width: 1200px; margin: 0 auto;">
+
+    <!-- Left side: Study Content -->
+    <div id="app-container" style="flex: 1;">
+
+        <!-- PHASE 1: PDF READER -->
+        <div id="reading-phase" class="glass-panel"
+            style="padding: 1rem; height: 80vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2>Reading Phase: {{ material.title }}</h2>
+                <div id="reading-timer" style="font-size: 1.5rem; font-weight: bold; color: var(--secondary);">
+                    {{ material.reading_time_seconds }}s
+                </div>
+            </div>
+            <embed src="{{ url_for('static', filename='uploads/' + material.pdf_filename) }}" type="application/pdf"
+                width="100%" height="100%" style="border-radius: 8px;">
+        </div>
+
+        <!-- PHASE 2: QUIZ -->
+        <div id="quiz-phase" style="display: none;">
+            <div class="glass-panel" style="padding: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2>Quiz Phase</h2>
+                    <div id="quiz-timer" style="font-size: 1.5rem; font-weight: bold; color: var(--secondary);">
+                        {{ material.quiz_time_seconds }}s
+                    </div>
+                </div>
+
+                <div id="question-container">
+                    <!-- JS will inject questions here -->
+                </div>
+
+                <div id="feedback-display"
+                    style="text-align: center; font-size: 5rem; height: 100px; margin-top: 1rem;">
+                    <!-- 🌸 or ❌ -->
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 3: RESULTS -->
+        <div id="results-phase" style="display: none; text-align: center;">
+            <div class="glass-panel" style="padding: 3rem;">
+                <h1>Quiz Complete!</h1>
+                <p style="font-size: 2rem;">Score: <span id="final-score">0</span> / <span id="max-score">0</span></p>
+
+                <form id="submit-score-form" action="{{ url_for('submit_score', material_id=material.id) }}"
+                    method="POST">
+                    <input type="hidden" name="score" id="score-input">
+                    <button type="submit" class="btn" style="font-size: 1.2rem; margin-top: 2rem;">See
+                        Leaderboard</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right side (or floating): Chat -->
+    <div class="chat-container">
+        <div class="chat-header">Class Chat
+            <button id="chat-toggle-btn" onclick="toggleChat()"
+                style="float:right;background:none;border:none;color:white;cursor:pointer;">✖</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Load history -->
+            {% for msg in messages %}
+            <div class="msg">
+                <div class="msg-sender">{{ msg.user.username }}</div>
+                {{ msg.content }}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="msg-input" placeholder="Ask a question..."
+                style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
+            <button onclick="sendMessage()" class="btn" style="padding: 6px 12px;">➤</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- SocketIO -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+<script>
+    // --- CHAT LOGIC ---
+    const socket = io();
+    const room = 'material_{{ material.id }}';
+    const username = '{{ current_user.username }}';
+
+    socket.on('connect', function () {
+        socket.emit('join', { username: username, room: room });
+    });
+
+    socket.on('message', function (data) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'msg';
+        msgDiv.innerHTML = `<div class="msg-sender">${data.username}</div>${data.msg}`;
+        document.getElementById('chat-messages').appendChild(msgDiv);
+        scrollToBottom();
+    });
+
+    function sendMessage() {
+        const input = document.getElementById('msg-input');
+        const msg = input.value;
+        if (msg) {
+            socket.emit('message', { room: room, msg: msg });
+            input.value = '';
+        }
+    }
+
+    function scrollToBottom() {
+        const chat = document.getElementById('chat-messages');
+        chat.scrollTop = chat.scrollHeight;
+    }
+    // Toggle chat visibility
+    function toggleChat() {
+        const chat = document.querySelector('.chat-container');
+        if (chat) {
+            if (chat.style.display === 'none' || chat.style.display === '') {
+                chat.style.display = 'flex';
+            } else {
+                chat.style.display = 'none';
+            }
+        }
+    }
+
+    // Send on Enter
+    document.getElementById('msg-input').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // Auto scroll on load
+    scrollToBottom();
+
+
+    // --- STUDY LOGIC (Existing) ---
+    const questions = {{ questions_json | safe }};
+    const readingTime = {{ material.reading_time_seconds }};
+    const quizTime = {{ material.quiz_time_seconds }};
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let quizTimerInterval;
+
+    // --- READING PHASE ---
+    let timeLeft = readingTime;
+    const readingTimerDisplay = document.getElementById('reading-timer');
+
+    const readingInterval = setInterval(() => {
+        timeLeft--;
+        readingTimerDisplay.innerText = timeLeft + 's';
+        if (timeLeft <= 0) {
+            clearInterval(readingInterval);
+            startQuiz();
+        }
+    }, 1000);
+
+    // --- QUIZ PHASE ---
+    function startQuiz() {
+        document.getElementById('reading-phase').style.display = 'none';
+        document.getElementById('quiz-phase').style.display = 'block';
+        // Hide Class Chat during Quiz Phase
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) { chatContainer.style.display = 'none'; }
+
+        // Start Quiz Timer
+        let quizTimeLeft = quizTime;
+        const quizTimerDisplay = document.getElementById('quiz-timer');
+        quizTimerInterval = setInterval(() => {
+            quizTimeLeft--;
+            quizTimerDisplay.innerText = quizTimeLeft + 's';
+            if (quizTimeLeft <= 0) {
+                endQuiz();
+            }
+        }, 1000);
+
+        showQuestion();
+    }
+
+    function showQuestion() {
+        if (currentQuestionIndex >= questions.length) {
+            endQuiz();
+            return;
+        }
+
+        const q = questions[currentQuestionIndex];
+        const container = document.getElementById('question-container');
+        document.getElementById('feedback-display').innerText = ''; // Clear feedback
+
+        container.innerHTML = `
+            <h3>Q${currentQuestionIndex + 1}: ${q.text}</h3>
+            <div style="display: grid; gap: 1rem; margin-top: 1.5rem;">
+                <button onclick="checkAnswer('A', '${q.correct_option}')" class="btn btn-outline" style="text-align: left;">A) ${q.option_a}</button>
+                <button onclick="checkAnswer('B', '${q.correct_option}')" class="btn btn-outline" style="text-align: left;">B) ${q.option_b}</button>
+                <button onclick="checkAnswer('C', '${q.correct_option}')" class="btn btn-outline" style="text-align: left;">C) ${q.option_c}</button>
+                <button onclick="checkAnswer('D', '${q.correct_option}')" class="btn btn-outline" style="text-align: left;">D) ${q.option_d}</button>
+            </div>
+        `;
+    }
+
+    function checkAnswer(selected, correct) {
+        const feedback = document.getElementById('feedback-display');
+
+        if (selected === correct) {
+            score++;
+            feedback.innerText = '🌸'; // Flower for correct
+        } else {
+            feedback.innerText = '❌'; // Cross for wrong
+        }
+
+        // Slight delay to show feedback then move on
+        setTimeout(() => {
+            currentQuestionIndex++;
+            showQuestion();
+        }, 1000);
+    }
+
+    function endQuiz() {
+        clearInterval(quizTimerInterval);
+        document.getElementById('quiz-phase').style.display = 'none';
+        document.getElementById('results-phase').style.display = 'block';
+
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('max-score').innerText = questions.length;
+        document.getElementById('score-input').value = score;
+    }
+</script>
+{% endblock %}

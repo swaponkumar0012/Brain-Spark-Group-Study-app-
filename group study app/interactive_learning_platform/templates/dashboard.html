@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div style="text-align: center; margin-top: 2rem;">
+    <h1>Welcome, {{ user.username }}!</h1>
+    <p style="color: var(--text-muted);">Your learning journey begins here.</p>
+
+    <div class="glass-panel"
+        style="padding: 2rem; margin-top: 2rem; display: inline-block; width: 100%; max-width: 600px; text-align: left;">
+
+        {% if user.is_teacher %}
+        <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--glass-border);">
+            <h3>Create New Group</h3>
+            <form action="{{ url_for('create_group') }}" method="POST" style="display: flex; gap: 1rem;">
+                <input type="text" name="name" placeholder="Group Name" required style="margin-bottom: 0;">
+                <button type="submit" class="btn">Create</button>
+            </form>
+        </div>
+        {% else %}
+        <div style="margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--glass-border);">
+            <h3>Join a Group</h3>
+            <form action="{{ url_for('join_group') }}" method="POST" style="display: flex; gap: 1rem;">
+                <input type="number" name="group_id" placeholder="Enter Group Code" required style="margin-bottom: 0;">
+                <button type="submit" class="btn">Join</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <h3>My Groups</h3>
+        {% if groups %}
+        <div style="display: grid; gap: 1rem; margin-top: 1rem;">
+            {% for group in groups %}
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+                <div>
+                    <strong>{{ group.name }}</strong>
+                    <br>
+                    <small style="color: var(--text-muted);">Code: {{ group.id }}</small>
+                </div>
+                <a href="{{ url_for('group_view', group_id=group.id) }}" class="btn btn-outline">Enter</a>
+                {% if user.is_teacher and group.created_by_id == user.id %}
+                <form action="{{ url_for('delete_group', group_id=group.id) }}" method="POST" style="display:inline;"
+                    onsubmit="return confirm('Are you sure you want to delete this group?');">
+                    <button type="submit" class="btn"
+                        style="background-color: #ff4d4d; margin-left: 0.5rem;">Delete</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>You haven't joined any groups yet.</p>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

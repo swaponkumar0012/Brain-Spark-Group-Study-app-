@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard{% endblock %}
+
+{% block content %}
+<div style="text-align: center; margin-top: 2rem;">
+    <h1>Leaderboard: {{ material.title }}</h1>
+    <p>See who tops the class!</p>
+
+    <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 600px; margin: 2rem auto;">
+        {% for attempt in attempts %}
+        {% set rank = loop.index %}
+
+        <div class="glass-panel" style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center;
+                 {% if rank == 1 %}
+                    background: linear-gradient(135deg, #ffd700, #b8860b); color: white; border: none; transform: scale(1.05); /* Gold */
+                 {% elif rank == 2 %}
+                    background: linear-gradient(135deg, #ff69b4, #db7093); color: white; border: none; /* Pink */
+                 {% elif rank == 3 %}
+                    background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #4a148c; border: none; /* Simple/Lavender */
+                 {% else %}
+                    background: rgba(255,255,255,0.05); /* Standard */
+                 {% endif %}
+                 ">
+
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span style="font-weight: bold; font-size: 1.5rem;">#{{ rank }}</span>
+                <span style="font-weight: 600;">{{ attempt.user.username }}</span>
+            </div>
+
+            <div style="font-size: 1.2rem;">
+                {{ attempt.score }} / {{ attempt.max_score }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <a href="{{ url_for('group_view', group_id=material.group_id) }}" class="btn btn-outline"
+        style="margin-top: 2rem;">Back to Group</a>
+</div>
+{% endblock %}
