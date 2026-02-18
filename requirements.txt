@@ -1,0 +1,12 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-SocketIO
+Werkzeug
+simple-websocket
+eventlet
+gunicorn
+pdf2image
+Pillow
+pdfminer.six
+
